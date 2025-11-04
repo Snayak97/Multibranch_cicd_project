@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  mywebapp:
+    build: .
+    container_name: "myreactapp_${BRANCH_NAME}"
+    ports:
+      - "${PORT}:5173"
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      - NODE_ENV=${BRANCH_NAME}

@@ -1,0 +1,17 @@
+# Create Image
+FROM node:22
+
+# Set workdir inside container
+WORKDIR /myapp
+
+# Copy your app code
+COPY . .
+
+# Install dependencies
+RUN npm install
+
+# Expose Vite port
+EXPOSE 5173
+
+# Run the development server
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
