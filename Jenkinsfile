@@ -63,10 +63,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Build successful for ${env.BRANCH_NAME}"
+            echo "Build successful for ${env.BRANCH_NAME}"
         }
         failure {
-            echo "❌ Build failed for ${env.BRANCH_NAME}"
+            echo " Build failed for ${env.BRANCH_NAME}"
         }
     }
 }
