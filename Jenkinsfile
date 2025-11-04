@@ -7,6 +7,12 @@ pipeline {
     }
 
     stages {
+        stage('Cleanup') {
+            steps {
+                deleteDir()
+                echo 'Workspace cleaned successfully'
+            }
+        }
         stage('Checkout') {
             steps {
                 echo "Checking out branch: ${env.BRANCH_NAME}"
