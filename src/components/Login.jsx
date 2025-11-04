@@ -16,7 +16,7 @@ const Login = () => {
         }}
         onClick={() => alert("Login clicked!")}
       >
-        LOGIN
+        Login
       </button>
     </div>
   );
