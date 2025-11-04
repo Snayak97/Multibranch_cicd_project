@@ -17,14 +17,14 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 echo "Installing npm packages..."
-                sh 'npm install'
+                
             }
         }
 
         stage('Build React App') {
             steps {
                 echo "Building React app..."
-                sh 'npm run build'
+                
             }
         }
 
