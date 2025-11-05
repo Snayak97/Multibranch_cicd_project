@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "snayak97/my-react-app"
-        DOCKER_TAG = "develop-${BUILD_NUMBER}"
+        IMAGE_NAME = "myreactapp"
+        DEFAULT_PORT = "5173"
     }
 
     stages {
@@ -13,66 +13,78 @@ pipeline {
                 echo 'Workspace cleaned successfully'
             }
         }
-        stage('Checkout') {
+
+        stage('Checkout Code') {
             steps {
-                echo "Checking out branch: ${env.BRANCH_NAME}"
+                echo "Checking out code..."
                 checkout scm
-            }
-        }
+                script {
+                    BRANCH_NAME = env.BRANCH_NAME.replaceAll('/', '-')
+                    echo "🪴 Current branch: ${BRANCH_NAME}"
 
-        stage('Install Dependencies') {
-            steps {
-                echo "Installing npm packages..."
-                
-            }
-        }
+                    
+                    switch (BRANCH_NAME) {
+                        case "develop":
+                            PORT = "8081"
+                            break
+                        case "feature":
+                            PORT = "8082"
+                            break
+                        case "staging":
+                            PORT = "8083"
+                            break
+                        case "release-v1.0.0":
+                            PORT = "8084"
+                            break
+                        case "hotfix-v1.0.1":
+                            PORT = "8085"
+                            break
+                        case "main":
+                            PORT = "8086"
+                            break
+                        default:
+                            PORT = DEFAULT_PORT
+                    }
 
-        stage('Build React App') {
-            steps {
-                echo "Building React app..."
-                
+                    echo "Port assigned: ${PORT}"
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image..."
-                sh """
-                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
-                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
-                """
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh """
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                        docker push ${DOCKER_IMAGE}:latest
-                    """
+                script {
+                    echo "Building Docker image for ${BRANCH_NAME}"
+                    sh "docker build -t ${IMAGE_NAME}:${BRANCH_NAME} ."
                 }
             }
         }
 
-        stage('Deploy to Dev Environment') {
+        stage('Deploy using Docker Compose') {
             steps {
-                echo "Deploying to Dev Environment..."
-                sh """
-                    docker-compose down
-                    docker-compose up -d
-                """
+                script {
+                    echo "Deploying ${BRANCH_NAME} branch..."
+                    sh """
+                        export BRANCH_NAME=${BRANCH_NAME}
+                        export PORT=${PORT}
+                        docker compose down || true
+                        docker compose up -d --build
+                    """
+                }
             }
         }
     }
 
     post {
         success {
-            echo "Build successful for ${env.BRANCH_NAME}"
+            script {
+                echo " Deployment successful for ${BRANCH_NAME} on port ${PORT}"
+            }
         }
         failure {
-            echo " Build failed for ${env.BRANCH_NAME}"
+            script {
+                echo " Deployment failed for ${BRANCH_NAME}"
+            }
         }
     }
 }
