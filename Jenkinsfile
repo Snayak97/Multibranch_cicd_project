@@ -55,7 +55,10 @@ pipeline {
             steps {
                 script {
                     echo "Building Docker image for ${BRANCH_NAME}"
-                    sh "docker build -t ${IMAGE_NAME}:${BRANCH_NAME} ."
+                     sh """
+                        docker build -t ${IMAGE_NAME}:${BRANCH_NAME}-${BUILD_NUMBER} .
+                        docker tag ${IMAGE_NAME}:${BRANCH_NAME}-${BUILD_NUMBER} ${IMAGE_NAME}:${BRANCH_NAME}-latest
+                    """
                 }
             }
         }
@@ -67,8 +70,8 @@ pipeline {
                     sh """
                         export BRANCH_NAME=${BRANCH_NAME}
                         export PORT=${PORT}
-                        docker compose down || true
-                        docker compose up -d --build
+                        docker compose -p ${BRANCH_NAME} down || true
+                        docker compose -p ${BRANCH_NAME} up -d --build
                     """
                 }
             }
