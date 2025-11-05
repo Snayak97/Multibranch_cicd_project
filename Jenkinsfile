@@ -19,7 +19,7 @@ pipeline {
                 echo "Checking out code..."
                 checkout scm
                 script {
-                    BRANCH_NAME = env.BRANCH_NAME.replaceAll('/', '-')
+                   BRANCH_NAME = env.BRANCH_NAME.replaceAll('[^a-zA-Z0-9_-]', '-')
                     echo "🪴 Current branch: ${BRANCH_NAME}"
 
                     
@@ -70,8 +70,8 @@ pipeline {
                     sh """
                         export BRANCH_NAME=${BRANCH_NAME}
                         export PORT=${PORT}
-                        docker compose -p ${BRANCH_NAME} down || true
-                        docker compose -p ${BRANCH_NAME} up -d --build
+                        docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
+                        docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
                     """
                 }
             }
