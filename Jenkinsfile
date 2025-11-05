@@ -25,22 +25,22 @@ pipeline {
                     
                     switch (BRANCH_NAME) {
                         case "develop":
-                            PORT = "8087"
+                            PORT = "8071"
                             break
                         case "feature":
-                            PORT = "8088"
+                            PORT = "8072"
                             break
                         case "staging":
-                            PORT = "8083"
+                            PORT = "8073"
                             break
                         case "release-v1.0.0":
-                            PORT = "8084"
+                            PORT = "8074"
                             break
                         case "hotfix-v1.0.1":
-                            PORT = "8085"
+                            PORT = "8075"
                             break
                         case "main":
-                            PORT = "8086"
+                            PORT = "8076"
                             break
                         default:
                             PORT = DEFAULT_PORT
