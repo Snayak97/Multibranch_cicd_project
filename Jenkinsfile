@@ -33,14 +33,14 @@ pipeline {
                         case "staging":
                             PORT = "8073"
                             break
-                        case "release-v1.0.0":
+                        case "release-v1-0-0":
                             PORT = "8074"
                             break
-                        case "hotfix-v1.0.1":
-                            PORT = "8075"
+                        case "hotfix-v1-0-1":
+                            PORT = "8076"
                             break
                         case "main":
-                            PORT = "8076"
+                            PORT = "8077"
                             break
                         default:
                             PORT = DEFAULT_PORT
