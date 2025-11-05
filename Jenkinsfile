@@ -7,6 +7,7 @@ pipeline {
     }
 
     stages {
+
         stage('Cleanup') {
             steps {
                 deleteDir()
@@ -19,7 +20,8 @@ pipeline {
                 echo "Checking out code..."
                 checkout scm
                 script {
-                   BRANCH_NAME = env.BRANCH_NAME.replaceAll('[^a-zA-Z0-9_-]', '-')
+                    
+                    BRANCH_NAME = env.BRANCH_NAME.replaceAll('[^a-zA-Z0-9_-]', '-')
                     echo "🪴 Current branch: ${BRANCH_NAME}"
 
                     
@@ -55,9 +57,12 @@ pipeline {
             steps {
                 script {
                     echo "Building Docker image for ${BRANCH_NAME}"
-                     sh """
-                        docker build -t ${IMAGE_NAME}:${BRANCH_NAME}-${BUILD_NUMBER} .
-                        docker tag ${IMAGE_NAME}:${BRANCH_NAME}-${BUILD_NUMBER} ${IMAGE_NAME}:${BRANCH_NAME}-latest
+
+                    sh """
+                        docker image prune -f --filter "label=branch=${BRANCH_NAME}" || true
+                        
+                        docker build -t ${IMAGE_NAME}:${BRANCH_NAME}-latest --label branch=${BRANCH_NAME} .
+                        
                     """
                 }
             }
@@ -67,9 +72,13 @@ pipeline {
             steps {
                 script {
                     echo "Deploying ${BRANCH_NAME} branch..."
+
                     sh """
                         export BRANCH_NAME=${BRANCH_NAME}
                         export PORT=${PORT}
+
+                        docker rm -f ${IMAGE_NAME}_${BRANCH_NAME} || true
+
                         docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
                         docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
                     """
@@ -81,7 +90,7 @@ pipeline {
     post {
         success {
             script {
-                echo " Deployment successful for ${BRANCH_NAME} on port ${PORT}"
+                echo "Deployment successful for ${BRANCH_NAME} on port ${PORT}"
             }
         }
         failure {
