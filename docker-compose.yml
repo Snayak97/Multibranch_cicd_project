@@ -5,7 +5,8 @@ services:
     build: .
     container_name: "myreactapp_${BRANCH_NAME}"
     ports:
-      - "${PORT}:5173"
-    command: npm run dev -- --host 0.0.0.0
+      - "${PORT}:${PORT}"
+    command: npm run dev -- --host 0.0.0.0 --port ${PORT}
     environment:
       - NODE_ENV=${BRANCH_NAME}
+      - PORT=${PORT}

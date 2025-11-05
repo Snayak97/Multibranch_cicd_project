@@ -25,10 +25,10 @@ pipeline {
                     
                     switch (BRANCH_NAME) {
                         case "develop":
-                            PORT = "8081"
+                            PORT = "8086"
                             break
                         case "feature":
-                            PORT = "8082"
+                            PORT = "8087"
                             break
                         case "staging":
                             PORT = "8083"

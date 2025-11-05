@@ -10,8 +10,8 @@ COPY . .
 # Install dependencies
 RUN npm install
 
-# Expose Vite port
-EXPOSE 5173
+# Expose port (dynamic port from env)
+EXPOSE ${PORT:-5173}
 
 # Run the development server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["sh", "-c", "npm run dev -- --host 0.0.0.0 --port ${PORT:-5173}"]
