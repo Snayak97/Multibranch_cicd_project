@@ -7,37 +7,7 @@ pipeline {
     }
 
     stages {
-
-        stage('Branch Validation') {
-            steps {
-                script {
-                    echo "Checking branch: ${env.BRANCH_NAME}"
-
-                    
-                    def allowedBranches = ["develop", "staging", "main"]
-                    def isReleaseBranch = env.BRANCH_NAME ==~ /^release\/.*/
-
-                    
-                    def isFeatureBranch = env.BRANCH_NAME ==~ /^feature\/.*/
-                    def isHotfixBranch = env.BRANCH_NAME ==~ /^hotfix\/.*/
-
-                    if (isFeatureBranch || isHotfixBranch) {
-                        echo "Skipping pipeline for branch: ${env.BRANCH_NAME} (feature or hotfix branch)"
-                        currentBuild.result = 'SUCCESS'
-                        error("Skipping build — feature/* and hotfix/* are ignored")
-                    }
-
-                    if (!allowedBranches.contains(env.BRANCH_NAME) && !isReleaseBranch) {
-                        echo "Skipping pipeline for branch: ${env.BRANCH_NAME}"
-                        currentBuild.result = 'SUCCESS'
-                        error("Skipping build — only allowed: develop, staging, main, release/*")
-                    } else {
-                        echo "Branch allowed: ${env.BRANCH_NAME}"
-                    }
-                }
-            }
-        }
-
+        
         stage('Cleanup') {
             steps {
                 deleteDir()
@@ -47,28 +17,35 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
+                echo "Checking out code..."
                 checkout scm
                 script {
+                    
                     BRANCH_NAME = env.BRANCH_NAME.replaceAll('[^a-zA-Z0-9_-]', '-')
                     echo "🪴 Current branch: ${BRANCH_NAME}"
 
+                    
                     switch (BRANCH_NAME) {
                         case "develop":
                             PORT = "8071"
                             break
+                        case "feature":
+                            PORT = "8072"
+                            break
                         case "staging":
                             PORT = "8073"
+                            break
+                        case "release-v1-0-0":
+                            PORT = "8074"
+                            break
+                        case "hotfix-v1-0-1":
+                            PORT = "8076"
                             break
                         case "main":
                             PORT = "8077"
                             break
                         default:
-                            // Dynamic port for release branches
-                            if (BRANCH_NAME.startsWith("release-")) {
-                                PORT = 8000 + Math.abs(BRANCH_NAME.hashCode() % 100)
-                            } else {
-                                PORT = DEFAULT_PORT
-                            }
+                            PORT = DEFAULT_PORT
                     }
 
                     echo "Port assigned: ${PORT}"
@@ -80,9 +57,12 @@ pipeline {
             steps {
                 script {
                     echo "Building Docker image for ${BRANCH_NAME}"
+
                     sh """
                         docker image prune -f --filter "label=branch=${BRANCH_NAME}" || true
+                        
                         docker build -t ${IMAGE_NAME}:${BRANCH_NAME}-latest --label branch=${BRANCH_NAME} .
+                        
                     """
                 }
             }
@@ -92,11 +72,13 @@ pipeline {
             steps {
                 script {
                     echo "Deploying ${BRANCH_NAME} branch..."
+
                     sh """
                         export BRANCH_NAME=${BRANCH_NAME}
                         export PORT=${PORT}
 
                         docker rm -f ${IMAGE_NAME}_${BRANCH_NAME} || true
+
                         docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
                         docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
                     """
@@ -113,7 +95,7 @@ pipeline {
         }
         failure {
             script {
-                echo "Deployment failed for ${BRANCH_NAME}"
+                echo " Deployment failed for ${BRANCH_NAME}"
             }
         }
     }
