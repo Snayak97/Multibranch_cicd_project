@@ -101,29 +101,7 @@ pipeline {
       }
     }
 
-    // stage('SonarQube Analysis') {
-    //   steps {
-    //     echo "===== Starting SonarQube Analysis for branch: ${BRANCH_NAME} ====="
-    //     script {
-    //       retry(2) {
-    //         withSonarQubeEnv("sonar") {
-    //           try {
-    //             sh """
-    //               ${SONAR_HOME}/bin/sonar-scanner \
-    //               -Dsonar.projectKey=${APP_NAME}-${safeBranch} \
-    //               -Dsonar.projectName=${APP_NAME}-${safeBranch} \
-    //               -Dsonar.sources=.
-    //                 """
-    //             echo "SonarQube analysis completed successfully for ${BRANCH_NAME}"
-    //           } catch (err) {
-    //             echo "SonarQube analysis failed: ${err}"
-    //             throw err
-    //           }
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
+    
     stage('Build Docker Image') {
         steps {
             script {
@@ -152,38 +130,7 @@ pipeline {
             }
         }
     }
-    stage('Deploy using Docker Compose') {
-    steps {
-        script {
-            echo "========== DEPLOYING BRANCH: ${BRANCH_NAME} =========="
-
-            try {
-                // Step 1: Export environment variables for Docker Compose
-                sh """
-                    echo "Setting environment variables..."
-                    export BRANCH_NAME=${BRANCH_NAME}
-                    export PORT=${PORT}
-                """
-
-                // Step 2: Stop & remove any existing container for this branch
-                sh """
-                    echo "Stopping and removing existing container (if any)..."
-                    docker rm -f ${IMAGE_NAME}_${BRANCH_NAME} || true
-                    docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
-                """
-
-                sh """
-                    echo "Starting Docker Compose deployment..."
-                    docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
-                """
-
-                echo "Deployment completed successfully for branch: ${BRANCH_NAME}"
-            } catch (err) {
-                echo "Deployment failed for branch: ${BRANCH_NAME}: ${err}"
-                error "Stopping pipeline due to deployment failure"
-            }
-        }
-    }
+   
 }
 
 
