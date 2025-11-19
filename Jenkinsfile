@@ -25,6 +25,11 @@ pipeline {
         echo "Workspace cleaned successfully"
       }
     }
+    stage('Step 2 - Breakpoint') {
+    steps {
+        input "💡 DEBUG: Pause here. Click continue."
+    }
+}
 
     stage('Checkout Code') {
       steps {
@@ -45,6 +50,7 @@ pipeline {
         }
       }
     }
+
 
     stage('Debug Workspace') {
       steps {
@@ -100,6 +106,7 @@ pipeline {
         }
       }
     }
+    
     stage('Build Docker Image') {
         steps {
             script {
@@ -115,19 +122,19 @@ pipeline {
     }
 
     stage('Deploy using Docker Compose') {
-    steps {
-        script {
-            echo "Deploying ${BRANCH_NAME} branch..."
-            sh """
-                export BRANCH_NAME=${BRANCH_NAME}
-                export PORT=${PORT}
-                docker rm -f ${IMAGE_NAME}_${BRANCH_NAME} || true
-                docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
-                docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
-            """
+        steps {
+            script {
+                echo "Deploying ${BRANCH_NAME} branch..."
+                sh """
+                    export BRANCH_NAME=${BRANCH_NAME}
+                    export PORT=${PORT}
+                    docker rm -f ${IMAGE_NAME}_${BRANCH_NAME} || true
+                    docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
+                    docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
+                """
+            }
         }
     }
-}
 
 
 
