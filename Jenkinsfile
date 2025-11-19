@@ -109,11 +109,11 @@ pipeline {
             withSonarQubeEnv("sonar") {
               try {
                 sh """
-                  sonar-scanner \
-                  -Dsonar.projectKey=${APP_NAME}-${BRANCH_NAME} \
-                  -Dsonar.projectName=${APP_NAME}-${BRANCH_NAME} \
-                  -Dsonar.sources=. \
-                """
+                  ${SONAR_HOME}/bin/sonar-scanner \
+                  -Dsonar.projectKey=${APP_NAME}-${safeBranch} \
+                  -Dsonar.projectName=${APP_NAME}-${safeBranch} \
+                  -Dsonar.sources=.
+                    """
                 echo "SonarQube analysis completed successfully for ${BRANCH_NAME}"
               } catch (err) {
                 echo "SonarQube analysis failed: ${err}"
