@@ -32,11 +32,7 @@ pipeline {
           echo "Checking out code..."
           retry(3) {
             try {
-              checkout([
-                $class: 'GitSCM',
-                branches: [[name: "*/${env.BRANCH_NAME}"]],
-                userRemoteConfigs: [[url: "${GIT_URL}"]]
-              ])
+              checkout scm
               echo "Checkout successful"
             } catch (err) {
               echo "Checkout failed: ${err}"
@@ -129,7 +125,7 @@ pipeline {
       }
     }
 
-    
+
 
   }
 
