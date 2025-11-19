@@ -102,78 +102,42 @@ pipeline {
     }
 
     
-    stage('Build Docker Image') {
-        steps {
-            script {
-                echo "========== BUILDING DOCKER IMAGE FOR BRANCH: ${BRANCH_NAME} =========="
+      stage('Build Docker Image') {
+            steps {
+                script {
+                    echo "Building Docker image for ${BRANCH_NAME}"
 
-                // Step 1: Clean up old images for this branch
-                sh """
-                    echo "Pruning old Docker images for branch ${BRANCH_NAME}..."
-                    docker image prune -f --filter "label=branch=${BRANCH_NAME}" || true
-                """
-
-                // Step 2: Build new Docker image
-                try {
                     sh """
-                        echo "Building Docker image ${IMAGE_NAME}:${BRANCH_NAME}-latest ..."
+                        docker image prune -f --filter "label=branch=${BRANCH_NAME}" || true
+                        
                         docker build -t ${IMAGE_NAME}:${BRANCH_NAME}-latest --label branch=${BRANCH_NAME} .
                         
-                        echo "Verifying Docker image build..."
-                        docker images | grep ${IMAGE_NAME} || true
                     """
-                    echo "✅ Docker image built successfully: ${IMAGE_NAME}:${BRANCH_NAME}-latest"
-                } catch (err) {
-                    echo "❌ Docker build failed: ${err}"
-                    error "Stopping pipeline due to Docker build failure"
+                }
+            }
+        }
+
+
+
+        stage('Deploy using Docker Compose') {
+            steps {
+                script {
+                    echo "Deploying ${BRANCH_NAME} branch..."
+
+                    sh """
+                        export BRANCH_NAME=${BRANCH_NAME}
+                        export PORT=${PORT}
+
+                        docker rm -f ${IMAGE_NAME}_${BRANCH_NAME} || true
+
+                        docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
+                        docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
+                    """
                 }
             }
         }
     }
-   
-    stage('Deploy using Docker Compose') {
-    steps {
-        script {
-            // 1️⃣ Sanitize branch name and assign port
-            env.BRANCH_NAME_SAFE = BRANCH_NAME.replaceAll('[^a-zA-Z0-9_-]', '-')
-            env.DEPLOY_PORT = PORT
-            echo "Deploying branch '${env.BRANCH_NAME_SAFE}' on host port ${env.DEPLOY_PORT}"
 
-            try {
-                // 2️⃣ Stop and remove any existing container
-                echo "Stopping and removing existing container (if any)..."
-                sh """
-                    docker rm -f myreactapp_${env.BRANCH_NAME_SAFE} || true
-                    docker compose -p myreactapp_${env.BRANCH_NAME_SAFE} down || true
-                """
-
-                // 3️⃣ Start deployment with Docker Compose
-                echo "Starting Docker Compose deployment..."
-                sh """
-                    DEPLOY_PORT=${env.DEPLOY_PORT} \
-                    BRANCH_NAME_SAFE=${env.BRANCH_NAME_SAFE} \
-                    docker compose -p myreactapp_${env.BRANCH_NAME_SAFE} up -d --build
-                """
-
-                // 4️⃣ Verify container is running
-                echo "Verifying deployment..."
-                def running = sh(
-                    script: "docker ps --filter 'name=myreactapp_${env.BRANCH_NAME_SAFE}' --filter 'status=running' -q",
-                    returnStdout: true
-                ).trim()
-
-                if (!running) {
-                    error "❌ Deployment failed: container myreactapp_${env.BRANCH_NAME_SAFE} is not running!"
-                }
-
-                echo "✅ Deployment completed successfully: http://<host-ip>:${env.DEPLOY_PORT}"
-            } catch (err) {
-                echo "❌ Deployment failed: ${err}"
-                error "Stopping pipeline due to deployment failure"
-            }
-        }
-    }
-}
 
 
 }
