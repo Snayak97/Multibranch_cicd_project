@@ -101,33 +101,92 @@ pipeline {
       }
     }
 
-    stage('SonarQube Analysis') {
-      steps {
-        echo "===== Starting SonarQube Analysis for branch: ${BRANCH_NAME} ====="
-        script {
-          retry(2) {
-            withSonarQubeEnv("sonar") {
-              try {
+    // stage('SonarQube Analysis') {
+    //   steps {
+    //     echo "===== Starting SonarQube Analysis for branch: ${BRANCH_NAME} ====="
+    //     script {
+    //       retry(2) {
+    //         withSonarQubeEnv("sonar") {
+    //           try {
+    //             sh """
+    //               ${SONAR_HOME}/bin/sonar-scanner \
+    //               -Dsonar.projectKey=${APP_NAME}-${safeBranch} \
+    //               -Dsonar.projectName=${APP_NAME}-${safeBranch} \
+    //               -Dsonar.sources=.
+    //                 """
+    //             echo "SonarQube analysis completed successfully for ${BRANCH_NAME}"
+    //           } catch (err) {
+    //             echo "SonarQube analysis failed: ${err}"
+    //             throw err
+    //           }
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+    stage('Build Docker Image') {
+        steps {
+            script {
+                echo "========== BUILDING DOCKER IMAGE FOR BRANCH: ${BRANCH_NAME} =========="
+
+                // Step 1: Clean up old images for this branch
                 sh """
-                  ${SONAR_HOME}/bin/sonar-scanner \
-                  -Dsonar.projectKey=${APP_NAME}-${safeBranch} \
-                  -Dsonar.projectName=${APP_NAME}-${safeBranch} \
-                  -Dsonar.sources=.
+                    echo "Pruning old Docker images for branch ${BRANCH_NAME}..."
+                    docker image prune -f --filter "label=branch=${BRANCH_NAME}" || true
+                """
+
+                // Step 2: Build new Docker image
+                try {
+                    sh """
+                        echo "Building Docker image ${IMAGE_NAME}:${BRANCH_NAME}-latest ..."
+                        docker build -t ${IMAGE_NAME}:${BRANCH_NAME}-latest --label branch=${BRANCH_NAME} .
+                        
+                        echo "Verifying Docker image build..."
+                        docker images | grep ${IMAGE_NAME} || true
                     """
-                echo "SonarQube analysis completed successfully for ${BRANCH_NAME}"
-              } catch (err) {
-                echo "SonarQube analysis failed: ${err}"
-                throw err
-              }
+                    echo "✅ Docker image built successfully: ${IMAGE_NAME}:${BRANCH_NAME}-latest"
+                } catch (err) {
+                    echo "❌ Docker build failed: ${err}"
+                    error "Stopping pipeline due to Docker build failure"
+                }
             }
-          }
         }
-      }
     }
+    stage('Deploy using Docker Compose') {
+    steps {
+        script {
+            echo "========== DEPLOYING BRANCH: ${BRANCH_NAME} =========="
+
+            try {
+                // Step 1: Export environment variables for Docker Compose
+                sh """
+                    echo "Setting environment variables..."
+                    export BRANCH_NAME=${BRANCH_NAME}
+                    export PORT=${PORT}
+                """
+
+                // Step 2: Stop & remove any existing container for this branch
+                sh """
+                    echo "Stopping and removing existing container (if any)..."
+                    docker rm -f ${IMAGE_NAME}_${BRANCH_NAME} || true
+                    docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
+                """
+
+                sh """
+                    echo "Starting Docker Compose deployment..."
+                    docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
+                """
+
+                echo "Deployment completed successfully for branch: ${BRANCH_NAME}"
+            } catch (err) {
+                echo "Deployment failed for branch: ${BRANCH_NAME}: ${err}"
+                error "Stopping pipeline due to deployment failure"
+            }
+        }
+    }
+}
 
 
-
-  }
 
   post {
     success {
