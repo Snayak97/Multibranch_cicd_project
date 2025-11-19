@@ -50,7 +50,11 @@ pipeline {
         }
       }
     }
-
+  stage('Step 3 - Breakpoint') {
+    steps {
+        input "💡 DEBUG: Pause here. Click continue."
+    }
+}
 
     stage('Debug Workspace') {
       steps {
