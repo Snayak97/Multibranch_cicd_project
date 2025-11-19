@@ -100,43 +100,35 @@ pipeline {
         }
       }
     }
-
-    
-      stage('Build Docker Image') {
-            steps {
-                script {
-                    echo "Building Docker image for ${BRANCH_NAME}"
-
-                    sh """
-                        docker image prune -f --filter "label=branch=${BRANCH_NAME}" || true
-                        
-                        docker build -t ${IMAGE_NAME}:${BRANCH_NAME}-latest --label branch=${BRANCH_NAME} .
-                        
-                    """
-                }
-            }
-        }
-
-
-
-        stage('Deploy using Docker Compose') {
-            steps {
-                script {
-                    echo "Deploying ${BRANCH_NAME} branch..."
-
-                    sh """
-                        export BRANCH_NAME=${BRANCH_NAME}
-                        export PORT=${PORT}
-
-                        docker rm -f ${IMAGE_NAME}_${BRANCH_NAME} || true
-
-                        docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
-                        docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
-                    """
-                }
+    stage('Build Docker Image') {
+        steps {
+            script {
+                echo "Building Docker image for ${BRANCH_NAME}"
+                sh """
+                    docker image prune -f --filter "label=branch=${BRANCH_NAME}" || true
+                
+                    docker build -t ${IMAGE_NAME}:${BRANCH_NAME}-latest --label branch=${BRANCH_NAME} .
+                
+                """
             }
         }
     }
+
+    stage('Deploy using Docker Compose') {
+    steps {
+        script {
+            echo "Deploying ${BRANCH_NAME} branch..."
+            sh """
+                export BRANCH_NAME=${BRANCH_NAME}
+                export PORT=${PORT}
+                docker rm -f ${IMAGE_NAME}_${BRANCH_NAME} || true
+                docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
+                docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
+            """
+        }
+    }
+}
+
 
 
 
