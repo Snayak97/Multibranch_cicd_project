@@ -11,7 +11,11 @@ COPY . .
 RUN npm install
 
 # Expose port (dynamic port from env)
-EXPOSE ${PORT:-5173}
+# EXPOSE ${PORT:-5173}
+EXPOSE 5173
+
 
 # Run the development server
-CMD ["sh", "-c", "npm run dev -- --host 0.0.0.0 --port ${PORT:-5173}"]
+# CMD ["sh", "-c", "npm run dev -- --host 0.0.0.0 --port ${PORT:-5173}"]
+CMD sh -c "npm run dev -- --host 0.0.0.0 --port 5173"
+

@@ -14,7 +14,6 @@ pipeline {
                 echo 'Workspace cleaned successfully'
             }
         }
-
         stage('Checkout Code') {
             steps {
                 echo "Checking out code..."
