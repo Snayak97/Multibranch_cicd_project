@@ -131,45 +131,50 @@ pipeline {
         }
     }
    
-   stage('Deploy using Docker Compose') {
+    stage('Deploy using Docker Compose') {
     steps {
         script {
-            echo "========== DEPLOYING BRANCH: ${BRANCH_NAME} =========="
-
-            // Step 1: Export environment variables safely
+            // 1️⃣ Sanitize branch name and assign port
             env.BRANCH_NAME_SAFE = BRANCH_NAME.replaceAll('[^a-zA-Z0-9_-]', '-')
             env.DEPLOY_PORT = PORT
-            echo "🔹 Branch: ${env.BRANCH_NAME_SAFE}, Port: ${env.DEPLOY_PORT}"
+            echo "Deploying branch '${env.BRANCH_NAME_SAFE}' on host port ${env.DEPLOY_PORT}"
 
             try {
-                // Step 2: Stop and remove any existing container for this branch
-                echo "🔹 Stopping and removing existing container (if any)..."
+                // 2️⃣ Stop and remove any existing container
+                echo "Stopping and removing existing container (if any)..."
                 sh """
-                    docker rm -f ${IMAGE_NAME}_${env.BRANCH_NAME_SAFE} || true
-                    docker compose -p ${IMAGE_NAME}_${env.BRANCH_NAME_SAFE} down || true
+                    docker rm -f myreactapp_${env.BRANCH_NAME_SAFE} || true
+                    docker compose -p myreactapp_${env.BRANCH_NAME_SAFE} down || true
                 """
 
-                // Step 3: Start deployment using Docker Compose
-                echo "🔹 Starting Docker Compose deployment..."
+                // 3️⃣ Start deployment with Docker Compose
+                echo "Starting Docker Compose deployment..."
                 sh """
-                    docker compose -p ${IMAGE_NAME}_${env.BRANCH_NAME_SAFE} up -d --build
+                    DEPLOY_PORT=${env.DEPLOY_PORT} \
+                    BRANCH_NAME_SAFE=${env.BRANCH_NAME_SAFE} \
+                    docker compose -p myreactapp_${env.BRANCH_NAME_SAFE} up -d --build
                 """
 
-                // Step 4: Verify that the container is running
-                echo "🔹 Verifying deployment..."
-                def running = sh(script: "docker ps --filter 'name=${IMAGE_NAME}_${env.BRANCH_NAME_SAFE}' --filter 'status=running' -q", returnStdout: true).trim()
+                // 4️⃣ Verify container is running
+                echo "Verifying deployment..."
+                def running = sh(
+                    script: "docker ps --filter 'name=myreactapp_${env.BRANCH_NAME_SAFE}' --filter 'status=running' -q",
+                    returnStdout: true
+                ).trim()
+
                 if (!running) {
-                    error "❌ Deployment failed: container ${IMAGE_NAME}_${env.BRANCH_NAME_SAFE} is not running!"
+                    error "❌ Deployment failed: container myreactapp_${env.BRANCH_NAME_SAFE} is not running!"
                 }
 
-                echo "✅ Deployment completed successfully for branch: ${BRANCH_NAME}"
+                echo "✅ Deployment completed successfully: http://<host-ip>:${env.DEPLOY_PORT}"
             } catch (err) {
-                echo "❌ Deployment failed for branch: ${BRANCH_NAME}: ${err}"
-                
+                echo "❌ Deployment failed: ${err}"
+                error "Stopping pipeline due to deployment failure"
             }
         }
     }
 }
+
 
 }
 
