@@ -5,10 +5,15 @@ FROM node:22
 WORKDIR /myapp
 
 # Copy your app code
-COPY . .
+COPY package*.json ./
+
+
 
 # Install dependencies
 RUN npm install
+
+COPY . .
+
 
 # Expose port (dynamic port from env)
 # EXPOSE ${PORT:-5173}

@@ -1,101 +1,148 @@
 pipeline {
-    agent any
+  agent any
 
-    environment {
-        IMAGE_NAME = "myreactapp"
-        DEFAULT_PORT = "5173"
+  environment {
+    IMAGE_NAME = "myreactapp"
+    DEFAULT_PORT = "5173"
+    SONAR_HOME = tool 'sonar'
+    APP_NAME = "my-react-app"
+  }
+
+  options {
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+    disableConcurrentBuilds()
+    skipDefaultCheckout(true)
+    ansiColor('xterm')
+  }
+
+  stages {
+
+    stage('Cleanup') {
+      steps {
+        echo "========== CLEANING WORKSPACE =========="
+        deleteDir()
+        echo "Workspace cleaned successfully"
+      }
     }
 
-    stages {
-        
-        stage('Cleanup') {
-            steps {
-                deleteDir()
-                echo 'Workspace cleaned successfully'
+    stage('Checkout Code') {
+      steps {
+        script {
+          echo "Checking out code..."
+          retry(3) {
+            try {
+              checkout([
+                $class: 'GitSCM',
+                branches: [[name: "*/${env.BRANCH_NAME}"]],
+                userRemoteConfigs: [[url: "${GIT_URL}"]]
+              ])
+              echo "Checkout successful"
+            } catch (err) {
+              echo "Checkout failed: ${err}"
+              echo "Retrying checkout in 2 seconds..."
+              sleep 2
+              throw err
             }
+          }
+          echo "========== CHECKOUT COMPLETED =========="
         }
-        stage('Checkout Code') {
-            steps {
-                echo "Checking out code..."
-                checkout scm
-                script {
-                    
-                    BRANCH_NAME = env.BRANCH_NAME.replaceAll('[^a-zA-Z0-9_-]', '-')
-                    echo "🪴 Current branch: ${BRANCH_NAME}"
-
-                    
-                    switch (BRANCH_NAME) {
-                        case "develop":
-                            PORT = "8071"
-                            break
-                        case "feature":
-                            PORT = "8072"
-                            break
-                        case "staging":
-                            PORT = "8073"
-                            break
-                        case "release-v1-0-0":
-                            PORT = "8074"
-                            break
-                        case "hotfix-v1-0-1":
-                            PORT = "8076"
-                            break
-                        case "main":
-                            PORT = "8077"
-                            break
-                        default:
-                            PORT = DEFAULT_PORT
-                    }
-
-                    echo "Port assigned: ${PORT}"
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    echo "Building Docker image for ${BRANCH_NAME}"
-
-                    sh """
-                        docker image prune -f --filter "label=branch=${BRANCH_NAME}" || true
-                        
-                        docker build -t ${IMAGE_NAME}:${BRANCH_NAME}-latest --label branch=${BRANCH_NAME} .
-                        
-                    """
-                }
-            }
-        }
-
-        stage('Deploy using Docker Compose') {
-            steps {
-                script {
-                    echo "Deploying ${BRANCH_NAME} branch..."
-
-                    sh """
-                        export BRANCH_NAME=${BRANCH_NAME}
-                        export PORT=${PORT}
-
-                        docker rm -f ${IMAGE_NAME}_${BRANCH_NAME} || true
-
-                        docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} down || true
-                        docker compose -p ${IMAGE_NAME}_${BRANCH_NAME} up -d --build
-                    """
-                }
-            }
-        }
+      }
     }
 
-    post {
-        success {
-            script {
-                echo "Deployment successful for ${BRANCH_NAME} on port ${PORT}"
-            }
-        }
-        failure {
-            script {
-                echo " Deployment failed for ${BRANCH_NAME}"
-            }
-        }
+    stage('Debug Workspace') {
+      steps {
+        echo "========== WORKSPACE DEBUG =========="
+        sh '''
+          echo "---- Current Directory ----"
+          pwd
+
+          echo "---- List Files ----"
+          ls -la
+
+          echo "---- Display HTML File ----"
+          cat index.html || echo "index.html not found"
+
+          echo "---- Git Status ----"
+          git status || echo "Not a git repo"
+        '''
+      }
     }
+
+    stage('Setup Environment') {
+      steps {
+        script {
+          BRANCH_NAME = env.BRANCH_NAME.replaceAll('[^a-zA-Z0-9_-]', '-')
+          echo "🪴 Current branch: ${BRANCH_NAME}"
+
+          PORT = DEFAULT_PORT
+
+          switch (true) {
+            case (BRANCH_NAME == "develop"):
+              PORT = "8071"
+              break
+            case (BRANCH_NAME.startsWith("feature")):
+              PORT = "8072"
+              break
+            case (BRANCH_NAME == "staging"):
+              PORT = "8073"
+              break
+            case (BRANCH_NAME.startsWith("release")):
+              PORT = "8074" 
+              break
+            case (BRANCH_NAME.startsWith("hotfix")):
+              PORT = "8076" 
+              break
+            case (BRANCH_NAME == "main"):
+              PORT = "8077"
+              break
+            default:
+              PORT = DEFAULT_PORT
+          }
+
+          echo "Port assigned: ${PORT}"
+        }
+      }
+    }
+
+    stage('SonarQube Analysis') {
+      steps {
+        echo "===== Starting SonarQube Analysis for branch: ${BRANCH_NAME} ====="
+        script {
+          retry(2) {
+            withSonarQubeEnv("sonar") {
+              try {
+                sh """
+                  sonar-scanner \
+                  -Dsonar.projectKey=${APP_NAME}-${BRANCH_NAME} \
+                  -Dsonar.projectName=${APP_NAME}-${BRANCH_NAME} \
+                  -Dsonar.sources=. \
+                """
+                echo "SonarQube analysis completed successfully for ${BRANCH_NAME}"
+              } catch (err) {
+                echo "SonarQube analysis failed: ${err}"
+                throw err
+              }
+            }
+          }
+        }
+      }
+    }
+
+    
+
+  }
+
+  post {
+    success {
+      script {
+        echo "Deployment successful for ${BRANCH_NAME} on port ${PORT}"
+      }
+    }
+    failure {
+      script {
+        echo "Deployment failed for ${BRANCH_NAME}"
+      }
+    }
+  }
 }
