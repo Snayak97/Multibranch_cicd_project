@@ -25,7 +25,7 @@ pipeline {
         echo "Workspace cleaned successfully"
       }
     }
-    stage('Step 2 - Breakpoint') {
+    stage('Step 1 - Breakpoint') {
     steps {
         input "💡 DEBUG: Pause here. Click continue."
     }
@@ -50,7 +50,7 @@ pipeline {
         }
       }
     }
-  stage('Step 3 - Breakpoint') {
+  stage('Step 2 - Breakpoint') {
     steps {
         input "💡 DEBUG: Pause here. Click continue."
     }
